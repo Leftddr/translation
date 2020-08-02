@@ -2,8 +2,12 @@
 document.addEventListener('DOMContentLoaded', function() {
 
     const url = "https://kapi.kakao.com/v1/translation/translate";
-    const key = ""; //input your key
+    const key = "af35956434233a16d98f0c2170840ca3"; //input your key
     const PAPAGO_BASE_URL = "https://papago.naver.net/website?";
+    const PAPAGO_KNOWLEDGER_URL = "https://openapi.naver.com/v1/papago/detectLangs";
+    const PAPAGO_TRANSLATION_URL = "https://openapi.naver.com/v1/papago/n2mt";
+    var CLIENT_ID = "input your client id";
+    var CLIENT_SECRET = "input your client secret";
     let load_to_page;
     let to_page;
 
@@ -62,36 +66,38 @@ document.addEventListener('DOMContentLoaded', function() {
             code : `document.querySelector("#userWord").value`
         }, function(){
             var userWord = document.querySelector("#userWord").value;
-            if(userWord == null || userWord == "") return;
-            var src_lang = '';
-            var target_lang = $("select[name=target_lang]").val();
-            if(target_lang == 'en'){
-                src_lang = 'kr';
-            } else {
-                src_lang = 'en';
-            }
-
-            var final_url = url + "?src_lang=" + src_lang + "&target_lang=" + target_lang + "&query=" + userWord;
-            var options = {
-                method: 'GET',
-                headers: {
-                    'Authorization' : 'KakaoAK ' + key,
-                },
-                mode:'cors'
-            }
-            
-            fetch(final_url, options).then(res => res.json()).then(data => {
-                document.querySelector("#result").innerHTML = "processing...";
-                if(data.translated_text == undefined) return;
-                if(data.translated_text.length == 0) return;
-                var result = "";
-                for (let i = 0 ; i < data.translated_text.length ; i++){
-                    result += '<div style="1px solid border">';
-                    result += '<p style="font-size:15px">' + data.translated_text[i] + '</p>';
-                    result += '</div>';
+            detectLanguage(userWord).then(function(data){
+                if(userWord == null || userWord == "") return;
+                var src_lang = data.langCode;
+                if(src_lang == 'ko'){
+                    target_lang = 'en';
                 }
-                document.querySelector("#result").innerHTML = result;
-                }).catch(error => {document.querySelector("#result").innerHTML = error;});
+                else {
+                    target_lang = 'ko';
+                }
+
+                var final_data = "source=" + src_lang + '&target=' + target_lang + '&text=' + userWord; 
+
+                var options = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'X-Naver-Client-Id' : CLIENT_ID,
+                        'X-Naver-Client-Secret' : CLIENT_SECRET,
+                    },
+                    body : final_data,
+                    mode:'cors'
+                }
+            
+                fetch(PAPAGO_TRANSLATION_URL, options).then(res => res.json()).then(data => {
+                    if(data.message.result.translatedText == undefined) return;
+                    var result_ = "";
+                    result_ += '<div style="1px solid border">';
+                    result_ += '<p style="font-size:15px">' + data.message.result.translatedText + '</p>';
+                    result_ += '</div>';
+                    document.querySelector("#result").innerHTML = result_;
+                    }).catch(error => {document.querySelector("#result").innerHTML = error;});
+                }).catch(function(error){alert(error.statusCode);});
             });
         }
 
@@ -116,38 +122,63 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector("#userWord").value = selectText();
     })
 
+    
     $("#userWord").on("propertychange change keyup paste input", function(){
         var userWord = document.querySelector("#userWord").value;
-            if(userWord == null || userWord == "") return;
-            var src_lang = '';
-            var target_lang = $("select[name=target_lang]").val();
-            if(target_lang == 'en'){
-                src_lang = 'kr';
-            } else {
-                src_lang = 'en';
-            }
-
-            var final_url = url + "?src_lang=" + src_lang + "&target_lang=" + target_lang + "&query=" + userWord;
-            var options = {
-                method: 'GET',
-                headers: {
-                    'Authorization' : 'KakaoAK ' + key,
-                },
-                mode:'cors'
-            }
-            
-            fetch(final_url, options).then(res => res.json()).then(data => {
-                if(data.translated_text == undefined) return;
-                if(data.translated_text.length == 0) return;
-                var result = "";
-                for (let i = 0 ; i < data.translated_text.length ; i++){
-                    result += '<div style="1px solid border">';
-                    result += '<p style="font-size:15px">' + data.translated_text[i] + '</p>';
-                    result += '</div>';
+            detectLanguage(userWord).then(function(data){
+                if(userWord == null || userWord == "") return;
+                var src_lang = data.langCode;
+                if(src_lang == 'ko'){
+                    target_lang = 'en';
                 }
-                document.querySelector("#result").innerHTML = result;
-                }).catch(error => {document.querySelector("#result").innerHTML = error;});
-    });
+                else {
+                    target_lang = 'ko';
+                }
+
+                var final_data = "source=" + src_lang + '&target=' + target_lang + '&text=' + userWord; 
+
+                var options = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'X-Naver-Client-Id' : CLIENT_ID,
+                        'X-Naver-Client-Secret' : CLIENT_SECRET,
+                    },
+                    body : final_data,
+                    mode:'cors'
+                }
+            
+                fetch(PAPAGO_TRANSLATION_URL, options).then(res => res.json()).then(data => {
+                    if(data.message.result.translatedText == undefined) return;
+                    var result_ = "";
+                    result_ += '<div style="1px solid border">';
+                    result_ += '<p style="font-size:15px">' + data.message.result.translatedText + '</p>';
+                    result_ += '</div>';
+                    document.querySelector("#result").innerHTML = result_;
+                    }).catch(error => {document.querySelector("#result").innerHTML = error;});
+                });
+        });
+
+    function detectLanguage(userWord){
+        return new Promise(function(resolve, reject){
+            $.ajax({
+                method:'POST',
+                data:{'query': userWord},
+                url:PAPAGO_KNOWLEDGER_URL,
+                beforeSend: function(xhr){
+                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+                    xhr.setRequestHeader("X-Naver-Client-Id", CLIENT_ID);
+                    xhr.setRequestHeader("X-Naver-Client-Secret", CLIENT_SECRET);
+                },
+                success: function(data){
+                    resolve(data);
+                },
+                error: function(error){
+                    reject(error);
+                }
+            })
+        })
+    }
 
     
     function selectText(){
